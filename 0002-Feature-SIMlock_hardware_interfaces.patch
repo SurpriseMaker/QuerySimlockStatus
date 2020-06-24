@@ -1,0 +1,178 @@
+From 81ae1e49a5889c01b4fac041d3d07335d4fa6570 Mon Sep 17 00:00:00 2001
+From: CaoBo <bo.cao@sim.com>
+Date: Wed, 8 May 2019 17:25:01 +0800
+Subject: [PATCH] [Feature][SIMlock] Add query SIMlock status API.  Part 2
+
+Project
+[Lily]
+
+Layer:
+Radio HAL
+
+Test:
+Successfully Build. Functional test needed.
+
+Change-Id: I0d27d96a7d31dd9ff03f0d328ba6180a2d53e919
+---
+ radio/1.0/Android.mk                               | 38 ++++++++++++++++++++++
+ radio/1.0/IRadio.hal                               |  2 ++
+ radio/1.0/IRadioResponse.hal                       |  4 +++
+ radio/1.0/types.hal                                |  6 ++++
+ .../1.0/vts/functional/radio_hidl_hal_utils_v1_0.h |  2 ++
+ radio/1.0/vts/functional/radio_response.cpp        |  7 ++++
+ radio/1.1/IRadioResponse.hal                       |  1 +
+ .../1.1/vts/functional/radio_hidl_hal_utils_v1_1.h |  3 ++
+ 8 files changed, 63 insertions(+)
+
+diff --git a/radio/1.0/Android.mk b/radio/1.0/Android.mk
+index a71e672..a26953b 100644
+--- a/radio/1.0/Android.mk
++++ b/radio/1.0/Android.mk
+@@ -2525,6 +2525,25 @@ $(GEN): $(LOCAL_PATH)/types.hal
+ LOCAL_GENERATED_SOURCES += $(GEN)
+ 
+ #
++# Build types.hal (SimlockStatus)
++#
++GEN := $(intermediates)/android/hardware/radio/V1_0/SimlockStatus.java
++$(GEN): $(HIDL)
++$(GEN): PRIVATE_HIDL := $(HIDL)
++$(GEN): PRIVATE_DEPS := $(LOCAL_PATH)/types.hal
++$(GEN): PRIVATE_OUTPUT_DIR := $(intermediates)
++$(GEN): PRIVATE_CUSTOM_TOOL = \
++        $(PRIVATE_HIDL) -o $(PRIVATE_OUTPUT_DIR) \
++        -Ljava \
++        -randroid.hardware:hardware/interfaces \
++        -randroid.hidl:system/libhidl/transport \
++        android.hardware.radio@1.0::types.SimlockStatus
++
++$(GEN): $(LOCAL_PATH)/types.hal
++	$(transform-generated-source)
++LOCAL_GENERATED_SOURCES += $(GEN)
++
++#
+ # Build types.hal (SmsAcknowledgeFailCause)
+ #
+ GEN := $(intermediates)/android/hardware/radio/V1_0/SmsAcknowledgeFailCause.java
+@@ -5578,6 +5597,25 @@ $(GEN): $(LOCAL_PATH)/types.hal
+ LOCAL_GENERATED_SOURCES += $(GEN)
+ 
+ #
++# Build types.hal (SimlockStatus)
++#
++GEN := $(intermediates)/android/hardware/radio/V1_0/SimlockStatus.java
++$(GEN): $(HIDL)
++$(GEN): PRIVATE_HIDL := $(HIDL)
++$(GEN): PRIVATE_DEPS := $(LOCAL_PATH)/types.hal
++$(GEN): PRIVATE_OUTPUT_DIR := $(intermediates)
++$(GEN): PRIVATE_CUSTOM_TOOL = \
++        $(PRIVATE_HIDL) -o $(PRIVATE_OUTPUT_DIR) \
++        -Ljava \
++        -randroid.hardware:hardware/interfaces \
++        -randroid.hidl:system/libhidl/transport \
++        android.hardware.radio@1.0::types.SimlockStatus
++
++$(GEN): $(LOCAL_PATH)/types.hal
++	$(transform-generated-source)
++LOCAL_GENERATED_SOURCES += $(GEN)
++
++#
+ # Build types.hal (SmsAcknowledgeFailCause)
+ #
+ GEN := $(intermediates)/android/hardware/radio/V1_0/SmsAcknowledgeFailCause.java
+diff --git a/radio/1.0/IRadio.hal b/radio/1.0/IRadio.hal
+index 236dbf5..9994e59 100644
+--- a/radio/1.0/IRadio.hal
++++ b/radio/1.0/IRadio.hal
+@@ -1571,4 +1571,6 @@ interface IRadio {
+      *
+      */
+     oneway responseAcknowledgement();
++
++    oneway getNetworkPersonalizationStatus(int32_t serial);
+ };
+diff --git a/radio/1.0/IRadioResponse.hal b/radio/1.0/IRadioResponse.hal
+index 27945cb..d30102b 100644
+--- a/radio/1.0/IRadioResponse.hal
++++ b/radio/1.0/IRadioResponse.hal
+@@ -2567,4 +2567,8 @@ interface IRadioResponse {
+      * @param serial Serial no. of the request whose acknowledgement is sent.
+      */
+     oneway acknowledgeRequest(int32_t serial);
++
++    oneway getPersonalizationStatusResponse(RadioResponseInfo info,
++                                               SimlockStatus Info);
++
+ };
+diff --git a/radio/1.0/types.hal b/radio/1.0/types.hal
+index 4d22bc0..73a2d99 100644
+--- a/radio/1.0/types.hal
++++ b/radio/1.0/types.hal
+@@ -2023,3 +2023,9 @@ struct PcoDataInfo {
+     vec<uint8_t> contents;                // Carrier-defined content. It is binary, opaque and
+                                           // loosely defined in LTE Layer 3 spec 24.008
+ };
++
++struct SimlockStatus{
++	int32_t islock;
++	int32_t locktype;
++	int32_t verifyAttempts;
++};
+\ No newline at end of file
+diff --git a/radio/1.0/vts/functional/radio_hidl_hal_utils_v1_0.h b/radio/1.0/vts/functional/radio_hidl_hal_utils_v1_0.h
+index b0d67da..9f94130 100644
+--- a/radio/1.0/vts/functional/radio_hidl_hal_utils_v1_0.h
++++ b/radio/1.0/vts/functional/radio_hidl_hal_utils_v1_0.h
+@@ -392,6 +392,8 @@ class RadioResponse : public IRadioResponse {
+     Return<void> setSimCardPowerResponse(const RadioResponseInfo& info);
+ 
+     Return<void> acknowledgeRequest(int32_t serial);
++    Return<void>  getPersonalizationStatusResponse(const RadioResponseInfo& info,
++                                              const SimlockStatus& Info);
+ };
+ 
+ /* Callback class for radio indication */
+diff --git a/radio/1.0/vts/functional/radio_response.cpp b/radio/1.0/vts/functional/radio_response.cpp
+index 434d488..0cf236f 100644
+--- a/radio/1.0/vts/functional/radio_response.cpp
++++ b/radio/1.0/vts/functional/radio_response.cpp
+@@ -901,3 +901,10 @@ Return<void> RadioResponse::setSimCardPowerResponse(const RadioResponseInfo& inf
+ Return<void> RadioResponse::acknowledgeRequest(int32_t /*serial*/) {
+     return Void();
+ }
++
++Return<void> RadioResponse::getPersonalizationStatusResponse(
++    const RadioResponseInfo& info, const SimlockStatus& /*failCauseInfo*/) {
++    rspInfo = info;
++    parent.notify();
++    return Void();
++}
+\ No newline at end of file
+diff --git a/radio/1.1/IRadioResponse.hal b/radio/1.1/IRadioResponse.hal
+index 759602b..913bed6 100644
+--- a/radio/1.1/IRadioResponse.hal
++++ b/radio/1.1/IRadioResponse.hal
+@@ -95,3 +95,4 @@ interface IRadioResponse extends @1.0::IRadioResponse {
+      */
+     oneway stopKeepaliveResponse(RadioResponseInfo info);
+ };
++
+diff --git a/radio/1.1/vts/functional/radio_hidl_hal_utils_v1_1.h b/radio/1.1/vts/functional/radio_hidl_hal_utils_v1_1.h
+index c797e35..afd88d0 100644
+--- a/radio/1.1/vts/functional/radio_hidl_hal_utils_v1_1.h
++++ b/radio/1.1/vts/functional/radio_hidl_hal_utils_v1_1.h
+@@ -407,8 +407,11 @@ class RadioResponse_v1_1 : public ::android::hardware::radio::V1_1::IRadioRespon
+                                         const KeepaliveStatus& status);
+ 
+     Return<void> stopKeepaliveResponse(const RadioResponseInfo& info);
++    Return<void>  getPersonalizationStatusResponse(const RadioResponseInfo& info,
++                                              const SimlockStatus& Info);
+ };
+ 
++
+ /* Callback class for radio indication */
+ class RadioIndication_v1_1 : public ::android::hardware::radio::V1_1::IRadioIndication {
+    protected:
+-- 
+2.7.4
+

@@ -1,0 +1,68 @@
+From 5ce14f2c4f491814ffe0d90586fdfb2c80647fbd Mon Sep 17 00:00:00 2001
+From: CaoBo <bo.cao@sim.com>
+Date: Fri, 10 May 2019 13:53:03 +0800
+Subject: [PATCH] [Feature][SIMlock] Add query SIMlock status API. Part 10.
+
+Project
+[Lily]
+
+Part:
+Sample code & Test entrance.
+
+Test:
+Build and test.
+
+Change-Id: Icf3e2222600708ae58f3d3fef0d93233ab49a955
+---
+ .../settings/admin/TerminalInformationSettingFragment.java | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/src/com/android/settings/admin/TerminalInformationSettingFragment.java b/src/com/android/settings/admin/TerminalInformationSettingFragment.java
+index 1210e23..8bfcfb9 100644
+--- a/src/com/android/settings/admin/TerminalInformationSettingFragment.java
++++ b/src/com/android/settings/admin/TerminalInformationSettingFragment.java
+@@ -57,6 +57,10 @@ import android.util.Log;
+ import android.preference.PreferenceManager;
+ import android.content.SharedPreferences;
+ 
++//For test
++import android.telephony.TelephonyManager;
++import android.telephony.PersonalizationStatus;
++
+ public class TerminalInformationSettingFragment extends SettingsPreferenceFragment implements
+         Preference.OnPreferenceClickListener,
+             Preference.OnPreferenceChangeListener,Indexable{
+@@ -71,6 +75,8 @@ public class TerminalInformationSettingFragment extends SettingsPreferenceFragme
+     private Preference mOpenSourceLicense;
+     private Preference mTechnicalCertification;
+ 
++    private TelephonyManager mTelephonyManager;
++    
+     public int getMetricsCategory() {
+         return MetricsEvent.DEVICEINFO;
+     }
+@@ -86,6 +92,9 @@ public class TerminalInformationSettingFragment extends SettingsPreferenceFragme
+ 
+         mTechnicalCertification.setOnPreferenceClickListener(this);
+         mTechnicalCertification.setOnPreferenceChangeListener(this);
++
++        //For test
++        mTelephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+     }
+     
+     @Override
+@@ -133,6 +142,11 @@ public class TerminalInformationSettingFragment extends SettingsPreferenceFragme
+         }else if(preference.getKey().equals(TECHNICAL_CERTIFICATION)) {
+             Context context =getActivity();
+             Log.d("luopeng", "operatePreference");
++            //For test
++            PersonalizationStatus  simLockStatus = mTelephonyManager.getPersonalizationStatus();
++            Log.d("simlock", "simLockStatus = " + simLockStatus);
++            String lockStatus = "lock status" + simLockStatus.getLockStatus();
++            Toast.makeText(context,lockStatus,Toast.LENGTH_SHORT).show();
+             Intent intent = new Intent();
+             String pakagename = "com.android.settings";
+             String classname = "com.android.settings.Settings$TechnicalCertificationActivity";
+-- 
+2.7.4
+

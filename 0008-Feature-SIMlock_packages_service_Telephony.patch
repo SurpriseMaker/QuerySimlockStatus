@@ -1,0 +1,105 @@
+From 0c329f8edf5a7b2a1824b6e50597e3e581e9cd0f Mon Sep 17 00:00:00 2001
+From: CaoBo <bo.cao@sim.com>
+Date: Thu, 9 May 2019 11:30:14 +0800
+Subject: [PATCH] [Feature][SIMlock] Add query SIMlock status API. part 8.
+
+[Project]
+Lily
+
+Layer:
+Phone service
+
+Test:
+Successfully build.
+
+Change-Id: Ibd3363cda6cefd7eee24cdd78221faa3cdf5fe81
+---
+ src/com/android/phone/PhoneInterfaceManager.java | 46 +++++++++++++++++++++++-
+ 1 file changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/phone/PhoneInterfaceManager.java b/src/com/android/phone/PhoneInterfaceManager.java
+index d655bbd..5d43ad3 100644
+--- a/src/com/android/phone/PhoneInterfaceManager.java
++++ b/src/com/android/phone/PhoneInterfaceManager.java
+@@ -69,6 +69,7 @@ import android.telephony.TelephonyHistogram;
+ import android.telephony.TelephonyManager;
+ import android.telephony.UssdResponse;
+ import android.telephony.VisualVoicemailSmsFilterSettings;
++import android.telephony.PersonalizationStatus;
+ import android.text.TextUtils;
+ import android.util.ArraySet;
+ import android.util.EventLog;
+@@ -127,7 +128,7 @@ import java.util.Map;
+ public class PhoneInterfaceManager extends ITelephony.Stub {
+     private static final String LOG_TAG = "PhoneInterfaceManager";
+     private static final boolean DBG = (PhoneGlobals.DBG_LEVEL >= 2);
+-    private static final boolean DBG_LOC = false;
++    private static final boolean DBG_LOC = true;
+     private static final boolean DBG_MERGE = false;
+ 
+     // Message codes used with mMainThreadHandler
+@@ -181,6 +182,8 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+     private static final int EVENT_GET_FORBIDDEN_PLMNS_DONE = 49;
+     private static final int CMD_SIM_GET_ATR = 50;
+     private static final int EVENT_SIM_GET_ATR_DONE = 51;
++    private static final int CMD_GET_PERSON_STATUS = 52;
++    private static final int EVENT_GET_PERSON_STATUS_DONE = 53;
+ 
+     /** The singleton instance. */
+     private static PhoneInterfaceManager sInstance;
+@@ -366,6 +369,29 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+                     }
+                     break;
+ 
++
++                case CMD_GET_PERSON_STATUS:
++                    if (DBG_LOC) log("sim-lock, handleMessage CMD_GET_PERSON_STATUS: ");
++                    request = (MainThreadRequest) msg.obj;
++                    onCompleted = obtainMessage(EVENT_GET_PERSON_STATUS_DONE,
++                            request);
++                    mPhone.getNetworkPersonalizationStatus(onCompleted);
++                    break;
++
++                case EVENT_GET_PERSON_STATUS_DONE:
++                    ar = (AsyncResult) msg.obj;
++                    request = (MainThreadRequest) ar.userObj;
++                    if (DBG_LOC) log("sim-lock, handleMessage EVENT_GET_PERSON_STATUS_DONE: ");
++                    if (ar.exception == null && ar.result != null) {
++                        request.result = ar.result;
++                    } else {
++                        request.result = new PersonalizationStatus(-1,-1,-1);
++                    }
++                    // Wake up the requesting thread
++                    synchronized (request) {
++                        request.notifyAll();
++                    }
++                    break;
+                 case CMD_ANSWER_RINGING_CALL:
+                     request = (MainThreadRequest) msg.obj;
+                     int answer_subId = request.subId;
+@@ -3991,4 +4017,22 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
+ 
+         return p.getSignalStrength();
+     }
++
++    @Override
++    public PersonalizationStatus getPersonalizationStatus(String callingPackage) {
++
++        if (DBG_LOC) log("getPersonalizationStatus: +");
++
++        PersonalizationStatus simLockStatus = null;
++
++        WorkSource workSource = getWorkSource(null, Binder.getCallingUid());
++        try {
++            simLockStatus = (PersonalizationStatus) sendRequest(
++                    CMD_GET_PERSON_STATUS, workSource,
++                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
++        } catch (RuntimeException e) {
++            Log.e(LOG_TAG, "getPersonalizationStatus " + e);
++        }
++        return simLockStatus;
++    }
+ }
+-- 
+2.7.4
+

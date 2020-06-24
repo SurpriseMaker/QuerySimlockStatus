@@ -1,0 +1,225 @@
+From e57a5e11303123fcf889d7252289efaa266f108b Mon Sep 17 00:00:00 2001
+From: CaoBo <bo.cao@sim.com>
+Date: Wed, 8 May 2019 17:35:31 +0800
+Subject: [PATCH] [Feature][SIMlock] Add query SIMlock status API. Part 4.
+
+Project:
+[Lily]
+
+Layer:
+QCRIL
+
+TEST:
+Successfully build. Functional test needed.
+
+Change-Id: I59db211c24f926aa5b7dd6da521ed9b3d326ff90
+---
+ .../qcril/common/uim/qcril_uim_security.c          | 46 ++++++++++++++++++++--
+ .../qcom/proprietary/qcril/qcril_qmi/qcril.c       |  6 +++
+ .../qcom/proprietary/qcril/qcril_qmi/qcril_log.c   |  1 +
+ 3 files changed, 50 insertions(+), 3 deletions(-)
+ mode change 100755 => 100644 LINUX/android/vendor/qcom/proprietary/qcril/common/uim/qcril_uim_security.c
+ mode change 100755 => 100644 LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril.c
+ mode change 100755 => 100644 LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril_log.c
+
+diff --git a/LINUX/android/vendor/qcom/proprietary/qcril/common/uim/qcril_uim_security.c b/LINUX/android/vendor/qcom/proprietary/qcril/common/uim/qcril_uim_security.c
+old mode 100755
+new mode 100644
+index b0c7295..eba92ef
+--- a/LINUX/android/vendor/qcom/proprietary/qcril/common/uim/qcril_uim_security.c
++++ b/LINUX/android/vendor/qcom/proprietary/qcril/common/uim/qcril_uim_security.c
+@@ -2198,6 +2198,7 @@ void qcril_uim_request_perso_status
+   int                                    ret      = 0;
+   uint8                                  i        = 0;
+   qmi_uim_rsp_data_type                  rsp_data;
++  RIL_SimlockStatus                              simlock;
+   RIL_PersonalizationStatusResp          perso_status_resp;
+   qmi_uim_get_configuration_params_type  get_config_params;
+ 
+@@ -2217,6 +2218,7 @@ void qcril_uim_request_perso_status
+   memset(&rsp_data, 0x00, sizeof(qmi_uim_rsp_data_type));
+   memset(&perso_status_resp, 0x00, sizeof(RIL_PersonalizationStatusResp));
+   memset(&get_config_params, 0x00, sizeof(qmi_uim_get_configuration_params_type));
++  memset(&simlock, 0x00, sizeof(RIL_SimlockStatus));
+ 
+   get_config_params.perso_status = QMI_UIM_TRUE;
+   ret = qcril_qmi_uim_get_configuration(qcril_uim.qmi_handle,
+@@ -2227,8 +2229,8 @@ void qcril_uim_request_perso_status
+ 
+   if ((ret != 0) || (!rsp_data.rsp_data.get_configuration_rsp.perso_status_valid))
+   {
+-    qcril_uim_response(params_ptr->instance_id, params_ptr->t, QCRIL_UIM_RIL_E_INTERNAL_ERR,
+-                       (void*)&perso_status_resp, sizeof(RIL_PersonalizationStatusResp),
++    qcril_uim_response(params_ptr->instance_id, params_ptr->t, RIL_E_GENERIC_FAILURE,
++                       (void*)&simlock, sizeof(RIL_SimlockStatus),
+                        TRUE, "Unable to retrieve status");
+     return ;
+   }
+@@ -2243,30 +2245,49 @@ void qcril_uim_request_perso_status
+         perso_status_resp.has_gwNWPersoStatus = TRUE;
+         perso_status_resp.gwNWPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++	 simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_GW_NW;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_GW_NS:
+         perso_status_resp.has_gwNWSubsetPersoStatus = TRUE;
+         perso_status_resp.gwNWSubsetPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++	  simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_GW_NS;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;          		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_GW_SP:
+         perso_status_resp.has_gwSPPersoStatus = TRUE;
+         perso_status_resp.gwSPPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_GW_SP;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_GW_CP:
+         perso_status_resp.has_gwCPPersoStatus = TRUE;
+         perso_status_resp.gwCPPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_GW_CP;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_GW_SPN:
+         perso_status_resp.has_gwSPNPersoStatus = TRUE;
+         perso_status_resp.gwSPNPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_GW_SPN;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_GW_SP_EHPLMN:
+@@ -2291,24 +2312,40 @@ void qcril_uim_request_perso_status
+         perso_status_resp.has_gwSIMPersoStatus = TRUE;
+         perso_status_resp.gwSIMPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_GW_SIM;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_1X_NW1:
+         perso_status_resp.has_gw1xNWType1PersoStatus = TRUE;
+         perso_status_resp.gw1xNWType1PersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_1X_NW1;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_1X_NW2:
+         perso_status_resp.has_gw1xNWType2PersoStatus = TRUE;
+         perso_status_resp.gw1xNWType2PersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_1X_NW2;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       case QMI_UIM_PERSO_FEATURE_1X_RUIM:
+         perso_status_resp.has_gw1xRUIMPersoStatus = TRUE;
+         perso_status_resp.gw1xRUIMPersoStatus.verifyAttempts =
+           rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;
++
++        simlock.islock = TRUE;
++        simlock.locktype = QMI_UIM_PERSO_FEATURE_1X_RUIM;
++        simlock.verifyAttempts = rsp_data.rsp_data.get_configuration_rsp.perso_status[i].verify_left;		
+         break;
+ 
+       default:
+@@ -2318,8 +2355,11 @@ void qcril_uim_request_perso_status
+     }
+   }
+ 
++    QCRIL_LOG_ERROR("=====qcril_uim_request_perso_status====simlock.islock:%d  simlock.locktype:%d  simlock.verifyAttempts:%d", simlock.islock, simlock.locktype, simlock.verifyAttempts);
++
++
+   qcril_uim_response(params_ptr->instance_id, params_ptr->t, RIL_E_SUCCESS,
+-                       (void*)&perso_status_resp, sizeof(RIL_PersonalizationStatusResp), TRUE,
++                       (void*)&simlock, sizeof(RIL_SimlockStatus), TRUE,
+                      "sending num perso retries");
+ } /* qcril_uim_request_perso_status */
+ 
+diff --git a/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril.c b/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril.c
+old mode 100755
+new mode 100644
+index cb1f082..595188f
+--- a/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril.c
++++ b/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril.c
+@@ -903,6 +903,8 @@ static qcril_dispatch_table_entry_type qcril_event_table[] =
+   /* RIL_REQUEST_GET_RADIO_CAPABILITY */
+   { QCRIL_REG_ALL_ACTIVE_STATES( RIL_REQUEST_GET_RADIO_CAPABILITY, qcril_qmi_nas_get_radio_capability ) },
+ 
++  { QCRIL_REG_ALL_ACTIVE_STATES( RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ, qcril_uim_request_perso_status ) },
++
+   /* RIL_REQUEST_SET_RADIO_CAPABILITY */
+   { QCRIL_REG_ALL_ACTIVE_STATES( RIL_REQUEST_SET_RADIO_CAPABILITY, qcril_qmi_nas_set_radio_capability ) },
+ 
+@@ -1502,6 +1504,7 @@ static int qmi_ril_fw_dedicated_thrd_exec_android_requests_set[] =
+     RIL_REQUEST_GET_UICC_SUBSCRIPTION,
+     RIL_REQUEST_SET_RADIO_CAPABILITY,
+     RIL_REQUEST_GET_RADIO_CAPABILITY,
++    RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ,    
+     RIL_REQUEST_SET_SUBSCRIPTION_MODE,
+     RIL_REQUEST_CDMA_QUERY_PREFERRED_VOICE_PRIVACY_MODE,
+     RIL_REQUEST_SET_TTY_MODE,
+@@ -2839,6 +2842,7 @@ int qmi_ril_is_multi_sim_oem_hook_request (int req_res_id)
+       case QCRIL_EVT_HOOK_UPDATE_SUB_BINDING:
+       // Porting from Aqua for simlock DEPERSONALIZE ,Cao Bo, 2019-04
+       case QCRIL_EVT_HOOK_ENTER_DEPERSONALIZATION_REQ:
++      case QCRIL_EVT_HOOK_PERSONALIZATION_STATUS_REQ:	  	
+       res = TRUE;
+       break;
+ 
+@@ -5110,6 +5114,7 @@ IxErrnoType qcril_dispatch_event
+           case QCRIL_EVT_UIM_QMI_INDICATION:
+           case RIL_REQUEST_DIAL:
+           case RIL_REQUEST_GET_RADIO_CAPABILITY:
++	   case RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ:		  	
+           case RIL_REQUEST_SIM_IO:
+           case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING:
+             if ( cur_status == QMI_RIL_GEN_OPERATIONAL_STATUS_UNBIND )
+@@ -8683,6 +8688,7 @@ uint32_t qmi_ril_fw_android_request_get_handling_capabilities( int android_reque
+ 
+     case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
+     case RIL_REQUEST_GET_RADIO_CAPABILITY:
++    case RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ:		
+       res = QMI_RIL_FW_ANDROID_REQUEST_HNDL_CAPS_COMPOSE_CAPS( QMI_RIL_FW_ANDROID_REQUEST_HNDL_CAPS_ALLOW_MULTIPLE
+                                                                | QMI_RIL_FW_ANDROID_REQUEST_HNDL_CAPS_LEGACY_DROP_OFF
+                                                                | QMI_RIL_FW_ANDROID_REQUEST_HNDL_CAPS_UNBIND_DROP_OFF,
+diff --git a/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril_log.c b/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril_log.c
+old mode 100755
+new mode 100644
+index c45bacd..582540f
+--- a/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril_log.c
++++ b/LINUX/android/vendor/qcom/proprietary/qcril/qcril_qmi/qcril_log.c
+@@ -261,6 +261,7 @@ static const qcril_qmi_event_log_type qcril_request_name[]  =
+   { RIL_REQUEST_SEND_DEVICE_STATE,                    "RIL_REQUEST_SEND_DEVICE_STATE" },
+   { RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER,      "RIL_REQUEST_SET_UNSOLICITED_RESPONSE_FILTER" },
+ 
++  { RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ,                 "RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ" },
+   /* 140 */
+   { RIL_REQUEST_SET_SIM_CARD_POWER,                   "RIL_REQUEST_SET_SIM_CARD_POWER"},
+   { RIL_REQUEST_START_NETWORK_SCAN,                   "RIL_REQUEST_START_NETWORK_SCAN" },
+-- 
+2.7.4
+

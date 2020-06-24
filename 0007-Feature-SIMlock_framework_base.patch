@@ -1,0 +1,431 @@
+From 8fd11f119205b38afe823353da2fea76a36c4da3 Mon Sep 17 00:00:00 2001
+From: CaoBo <bo.cao@sim.com>
+Date: Thu, 9 May 2019 11:22:57 +0800
+Subject: [PATCH] [Feature][SIMlock] Add query SIMlock status API. Part 7.
+
+Project:
+[Lily]
+
+Layer:
+framework telephony
+
+Test:
+Successfully build.
+
+Change-Id: I53d834660c847eec7f2d83183e221cf69732548c
+---
+ Android.mk                                         |  2 +
+ api/current.txt                                    | 27 ++++++++++
+ api/system-current.txt                             | 27 ++++++++++
+ api/test-current.txt                               | 27 ++++++++++
+ .../android/telephony/PersonalizationStatus.aidl   | 13 +++++
+ .../android/telephony/PersonalizationStatus.java   | 58 ++++++++++++++++++++++
+ .../java/android/telephony/TelephonyManager.java   | 18 +++++++
+ .../com/android/internal/telephony/ITelephony.aidl |  3 ++
+ .../android/internal/telephony/RILConstants.java   |  1 +
+ 9 files changed, 176 insertions(+)
+ create mode 100644 telephony/java/android/telephony/PersonalizationStatus.aidl
+ create mode 100644 telephony/java/android/telephony/PersonalizationStatus.java
+ mode change 100755 => 100644 telephony/java/com/android/internal/telephony/RILConstants.java
+
+diff --git a/Android.mk b/Android.mk
+index 1dbd65e..a1b8be7 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -563,6 +563,7 @@ LOCAL_SRC_FILES += \
+ 	telephony/java/com/android/internal/telephony/ISmsSecurityService.aidl \
+ 	telephony/java/com/android/internal/telephony/ISmsSecurityAgent.aidl \
+ 
++
+ # The following are native binders that need to go with the native component
+ # at system/update_engine/binder_bindings/. Use relative path to refer to them.
+ LOCAL_SRC_FILES += \
+@@ -662,6 +663,7 @@ aidl_files := \
+ 	frameworks/base/telephony/java/android/telephony/SubscriptionInfo.aidl \
+ 	frameworks/base/telephony/java/android/telephony/CellInfo.aidl \
+ 	frameworks/base/telephony/java/android/telephony/SignalStrength.aidl \
++       frameworks/base/telephony/java/android/telephony/PersonalizationStatus.aidl \
+ 	frameworks/base/telephony/java/android/telephony/IccOpenLogicalChannelResponse.aidl \
+ 	frameworks/base/telephony/java/android/telephony/NeighboringCellInfo.aidl \
+ 	frameworks/base/telephony/java/android/telephony/ModemActivityInfo.aidl \
+diff --git a/api/current.txt b/api/current.txt
+index 31bd0d9..987cf79 100644
+--- a/api/current.txt
++++ b/api/current.txt
+@@ -1616,6 +1616,7 @@ package android {
+     field public static final int bg_dialog_button_gray = 17301689; // 0x10800b9
+     field public static final int bg_dialog_button_white = 17301688; // 0x10800b8
+     field public static final int bg_round_white = 17301687; // 0x10800b7
++    field public static final int bg_toast = 17301690; // 0x10800ba
+     field public static final int bottom_bar = 17301658; // 0x108009a
+     field public static final int btn_default = 17301508; // 0x1080004
+     field public static final int btn_default_small = 17301509; // 0x1080005
+@@ -2720,6 +2721,8 @@ package android {
+     field public static final int Widget_Toolbar_Button_Navigation = 16974312; // 0x10301e8
+     field public static final int Widget_WebView = 16973875; // 0x1030033
+     field public static final int dialog = 16974560; // 0x10302e0
++    field public static final int dialog_button1 = 16974562; // 0x10302e2
++    field public static final int dialog_common = 16974561; // 0x10302e1
+   }
+ 
+   public static final class R.transition {
+@@ -4925,14 +4928,26 @@ package android.app {
+   }
+ 
+   public abstract interface ISystemUtilsService implements android.os.IInterface {
++    method public abstract boolean addHandlingMail(java.lang.String, java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean addReceiveBoxName(java.lang.String) throws android.os.RemoteException;
++    method public abstract boolean deleteHandlingMail(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean deleteReceiveBoxName(java.lang.String) throws android.os.RemoteException;
+     method public abstract void enterEdl() throws android.os.RemoteException;
+     method public abstract void enterFastboot() throws android.os.RemoteException;
+     method public abstract void enterRecovery() throws android.os.RemoteException;
++    method public abstract int getAutoRecodeEnable() throws android.os.RemoteException;
++    method public abstract int getUrgentNewsVolume() throws android.os.RemoteException;
++    method public abstract boolean setAutoRecodeEnable(int) throws android.os.RemoteException;
+     method public abstract void setCalibrate() throws android.os.RemoteException;
++    method public abstract boolean setCallHistoryMake(int, int) throws android.os.RemoteException;
+     method public abstract void setColor(int) throws android.os.RemoteException;
+     method public abstract void setDumpModeViaFile(boolean) throws android.os.RemoteException;
+     method public abstract void setFlashlight(boolean) throws android.os.RemoteException;
+     method public abstract void setLoggerLevel(java.lang.String, java.lang.String) throws android.os.RemoteException;
++    method public abstract boolean setMailImap4(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean setMailSmtp(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean setUrgentNewsVolume(int) throws android.os.RemoteException;
++    method public abstract boolean urgentNewsDelete() throws android.os.RemoteException;
+     method public abstract boolean wdtClear() throws android.os.RemoteException;
+   }
+ 
+@@ -6031,15 +6046,27 @@ package android.app {
+   }
+ 
+   public class SystemUtilsManager {
++    method public boolean addHandlingMail(java.lang.String, java.lang.String, int);
++    method public boolean addReceiveBoxName(java.lang.String);
++    method public boolean deleteHandlingMail(java.lang.String, int);
++    method public boolean deleteReceiveBoxName(java.lang.String);
+     method public void enterEdl();
+     method public void enterFastboot();
+     method public void enterRecovery();
++    method public int getAutoRecodeEnable();
+     method public static android.app.SystemUtilsManager getInstance();
++    method public int getUrgentNewsVolume();
++    method public boolean setAutoRecodeEnable(int);
+     method public void setCalibrate();
++    method public boolean setCallHistoryMake(int, int);
+     method public void setColor(int);
+     method public void setDumpModeViaFile(boolean);
+     method public void setFlashlight(boolean);
+     method public void setLoggerLevel(java.lang.String, java.lang.String);
++    method public boolean setMailImap4(java.lang.String, int);
++    method public boolean setMailSmtp(java.lang.String, int);
++    method public boolean setUrgentNewsVolume(int);
++    method public boolean urgentNewsDelete();
+     method public boolean wdtClear();
+   }
+ 
+diff --git a/api/system-current.txt b/api/system-current.txt
+index 18a95a4..5845aef 100644
+--- a/api/system-current.txt
++++ b/api/system-current.txt
+@@ -1752,6 +1752,7 @@ package android {
+     field public static final int bg_dialog_button_gray = 17301689; // 0x10800b9
+     field public static final int bg_dialog_button_white = 17301688; // 0x10800b8
+     field public static final int bg_round_white = 17301687; // 0x10800b7
++    field public static final int bg_toast = 17301690; // 0x10800ba
+     field public static final int bottom_bar = 17301658; // 0x108009a
+     field public static final int btn_default = 17301508; // 0x1080004
+     field public static final int btn_default_small = 17301509; // 0x1080005
+@@ -2859,6 +2860,8 @@ package android {
+     field public static final int Widget_Toolbar_Button_Navigation = 16974312; // 0x10301e8
+     field public static final int Widget_WebView = 16973875; // 0x1030033
+     field public static final int dialog = 16974560; // 0x10302e0
++    field public static final int dialog_button1 = 16974562; // 0x10302e2
++    field public static final int dialog_common = 16974561; // 0x10302e1
+   }
+ 
+   public static final class R.transition {
+@@ -5096,14 +5099,26 @@ package android.app {
+   }
+ 
+   public abstract interface ISystemUtilsService implements android.os.IInterface {
++    method public abstract boolean addHandlingMail(java.lang.String, java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean addReceiveBoxName(java.lang.String) throws android.os.RemoteException;
++    method public abstract boolean deleteHandlingMail(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean deleteReceiveBoxName(java.lang.String) throws android.os.RemoteException;
+     method public abstract void enterEdl() throws android.os.RemoteException;
+     method public abstract void enterFastboot() throws android.os.RemoteException;
+     method public abstract void enterRecovery() throws android.os.RemoteException;
++    method public abstract int getAutoRecodeEnable() throws android.os.RemoteException;
++    method public abstract int getUrgentNewsVolume() throws android.os.RemoteException;
++    method public abstract boolean setAutoRecodeEnable(int) throws android.os.RemoteException;
+     method public abstract void setCalibrate() throws android.os.RemoteException;
++    method public abstract boolean setCallHistoryMake(int, int) throws android.os.RemoteException;
+     method public abstract void setColor(int) throws android.os.RemoteException;
+     method public abstract void setDumpModeViaFile(boolean) throws android.os.RemoteException;
+     method public abstract void setFlashlight(boolean) throws android.os.RemoteException;
+     method public abstract void setLoggerLevel(java.lang.String, java.lang.String) throws android.os.RemoteException;
++    method public abstract boolean setMailImap4(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean setMailSmtp(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean setUrgentNewsVolume(int) throws android.os.RemoteException;
++    method public abstract boolean urgentNewsDelete() throws android.os.RemoteException;
+     method public abstract boolean wdtClear() throws android.os.RemoteException;
+   }
+ 
+@@ -6237,15 +6252,27 @@ package android.app {
+   }
+ 
+   public class SystemUtilsManager {
++    method public boolean addHandlingMail(java.lang.String, java.lang.String, int);
++    method public boolean addReceiveBoxName(java.lang.String);
++    method public boolean deleteHandlingMail(java.lang.String, int);
++    method public boolean deleteReceiveBoxName(java.lang.String);
+     method public void enterEdl();
+     method public void enterFastboot();
+     method public void enterRecovery();
++    method public int getAutoRecodeEnable();
+     method public static android.app.SystemUtilsManager getInstance();
++    method public int getUrgentNewsVolume();
++    method public boolean setAutoRecodeEnable(int);
+     method public void setCalibrate();
++    method public boolean setCallHistoryMake(int, int);
+     method public void setColor(int);
+     method public void setDumpModeViaFile(boolean);
+     method public void setFlashlight(boolean);
+     method public void setLoggerLevel(java.lang.String, java.lang.String);
++    method public boolean setMailImap4(java.lang.String, int);
++    method public boolean setMailSmtp(java.lang.String, int);
++    method public boolean setUrgentNewsVolume(int);
++    method public boolean urgentNewsDelete();
+     method public boolean wdtClear();
+   }
+ 
+diff --git a/api/test-current.txt b/api/test-current.txt
+index 975e6e9..90b463a 100644
+--- a/api/test-current.txt
++++ b/api/test-current.txt
+@@ -1616,6 +1616,7 @@ package android {
+     field public static final int bg_dialog_button_gray = 17301689; // 0x10800b9
+     field public static final int bg_dialog_button_white = 17301688; // 0x10800b8
+     field public static final int bg_round_white = 17301687; // 0x10800b7
++    field public static final int bg_toast = 17301690; // 0x10800ba
+     field public static final int bottom_bar = 17301658; // 0x108009a
+     field public static final int btn_default = 17301508; // 0x1080004
+     field public static final int btn_default_small = 17301509; // 0x1080005
+@@ -2720,6 +2721,8 @@ package android {
+     field public static final int Widget_Toolbar_Button_Navigation = 16974312; // 0x10301e8
+     field public static final int Widget_WebView = 16973875; // 0x1030033
+     field public static final int dialog = 16974560; // 0x10302e0
++    field public static final int dialog_button1 = 16974562; // 0x10302e2
++    field public static final int dialog_common = 16974561; // 0x10302e1
+   }
+ 
+   public static final class R.transition {
+@@ -4938,14 +4941,26 @@ package android.app {
+   }
+ 
+   public abstract interface ISystemUtilsService implements android.os.IInterface {
++    method public abstract boolean addHandlingMail(java.lang.String, java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean addReceiveBoxName(java.lang.String) throws android.os.RemoteException;
++    method public abstract boolean deleteHandlingMail(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean deleteReceiveBoxName(java.lang.String) throws android.os.RemoteException;
+     method public abstract void enterEdl() throws android.os.RemoteException;
+     method public abstract void enterFastboot() throws android.os.RemoteException;
+     method public abstract void enterRecovery() throws android.os.RemoteException;
++    method public abstract int getAutoRecodeEnable() throws android.os.RemoteException;
++    method public abstract int getUrgentNewsVolume() throws android.os.RemoteException;
++    method public abstract boolean setAutoRecodeEnable(int) throws android.os.RemoteException;
+     method public abstract void setCalibrate() throws android.os.RemoteException;
++    method public abstract boolean setCallHistoryMake(int, int) throws android.os.RemoteException;
+     method public abstract void setColor(int) throws android.os.RemoteException;
+     method public abstract void setDumpModeViaFile(boolean) throws android.os.RemoteException;
+     method public abstract void setFlashlight(boolean) throws android.os.RemoteException;
+     method public abstract void setLoggerLevel(java.lang.String, java.lang.String) throws android.os.RemoteException;
++    method public abstract boolean setMailImap4(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean setMailSmtp(java.lang.String, int) throws android.os.RemoteException;
++    method public abstract boolean setUrgentNewsVolume(int) throws android.os.RemoteException;
++    method public abstract boolean urgentNewsDelete() throws android.os.RemoteException;
+     method public abstract boolean wdtClear() throws android.os.RemoteException;
+   }
+ 
+@@ -6045,15 +6060,27 @@ package android.app {
+   }
+ 
+   public class SystemUtilsManager {
++    method public boolean addHandlingMail(java.lang.String, java.lang.String, int);
++    method public boolean addReceiveBoxName(java.lang.String);
++    method public boolean deleteHandlingMail(java.lang.String, int);
++    method public boolean deleteReceiveBoxName(java.lang.String);
+     method public void enterEdl();
+     method public void enterFastboot();
+     method public void enterRecovery();
++    method public int getAutoRecodeEnable();
+     method public static android.app.SystemUtilsManager getInstance();
++    method public int getUrgentNewsVolume();
++    method public boolean setAutoRecodeEnable(int);
+     method public void setCalibrate();
++    method public boolean setCallHistoryMake(int, int);
+     method public void setColor(int);
+     method public void setDumpModeViaFile(boolean);
+     method public void setFlashlight(boolean);
+     method public void setLoggerLevel(java.lang.String, java.lang.String);
++    method public boolean setMailImap4(java.lang.String, int);
++    method public boolean setMailSmtp(java.lang.String, int);
++    method public boolean setUrgentNewsVolume(int);
++    method public boolean urgentNewsDelete();
+     method public boolean wdtClear();
+   }
+ 
+diff --git a/telephony/java/android/telephony/PersonalizationStatus.aidl b/telephony/java/android/telephony/PersonalizationStatus.aidl
+new file mode 100644
+index 0000000..619dd1c
+--- /dev/null
++++ b/telephony/java/android/telephony/PersonalizationStatus.aidl
+@@ -0,0 +1,13 @@
++//Cao Bo created for SIM lock feature. SPEC:OTR-MA-USIM-SPEC-RevB00-20180731_E.pdf
++
++
++
++
++
++package android.telephony;
++
++
++/**
++ * @hide
++ */
++parcelable PersonalizationStatus;
+diff --git a/telephony/java/android/telephony/PersonalizationStatus.java b/telephony/java/android/telephony/PersonalizationStatus.java
+new file mode 100644
+index 0000000..a29d730
+--- /dev/null
++++ b/telephony/java/android/telephony/PersonalizationStatus.java
+@@ -0,0 +1,58 @@
++//Cao Bo created for SIM lock feature. SPEC:OTR-MA-USIM-SPEC-RevB00-20180731_E.pdf
++package android.telephony;
++
++import android.os.Parcel;
++import android.os.Parcelable;
++
++/**
++ * {@hide}
++ */
++
++public class PersonalizationStatus implements Parcelable{
++     private int mIslock = 0;
++     private int mLocktype = 0;
++     private int mVerifyAttempts = 0;
++
++
++    public PersonalizationStatus(int islock, int locktype, int verifyAttempts){
++		mIslock = islock;
++		mLocktype = locktype;
++		mVerifyAttempts = verifyAttempts;
++    }
++
++     @Override
++    public int describeContents() {
++        return 0;
++    }
++
++    public PersonalizationStatus(Parcel in) {
++        readFromParcel(in);
++    }
++
++    public PersonalizationStatus() {
++    }
++    
++    public void readFromParcel(Parcel in) {
++        mIslock = in.readInt();
++        mLocktype = in.readInt();
++        mVerifyAttempts = in.readInt();
++    }
++    
++    @Override
++    public void writeToParcel(Parcel dest, int flags) {
++        dest.writeInt(mIslock);
++        dest.writeInt(mLocktype);
++        dest.writeInt(mVerifyAttempts);
++    }
++
++    public static final Creator<PersonalizationStatus> CREATOR =
++            new Parcelable.Creator<PersonalizationStatus>() {
++        public PersonalizationStatus createFromParcel(Parcel in) {
++            return new PersonalizationStatus(in);
++        }
++
++        public PersonalizationStatus[] newArray(int size) {
++            return new PersonalizationStatus[size];
++        }
++    };
++}
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+index fa66710..9019b9d 100644
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -64,6 +64,7 @@ import com.android.internal.telephony.OperatorInfo;
+ import com.android.internal.telephony.PhoneConstants;
+ import com.android.internal.telephony.RILConstants;
+ import com.android.internal.telephony.TelephonyProperties;
++//import android.telephony.PersonalizationStatus;
+ 
+ import java.io.FileInputStream;
+ import java.io.IOException;
+@@ -6954,4 +6955,21 @@ public class TelephonyManager {
+         }
+         return null;
+     }
++   
++    /*public PersonalizationStatus getPersonalizationStatus() {
++        try {
++            ITelephony telephony = getITelephony();
++            Log.d(TAG, "sim-lock ,getPersonalizationStatus: telephony=" + telephony);
++            if (telephony == null){
++                return null;
++            }
++            return telephony.getPersonalizationStatus(mContext.getOpPackageName());
++        } catch (RemoteException ex) {
++            Log.e(TAG, "sim-lock,Error calling ITelephony#getPersonalizationStatus", ex);
++            return null;
++        } catch (NullPointerException ex) {
++            Log.e(TAG, "sim-lock,Error calling ITelephony#getPersonalizationStatus", ex);
++            return null;
++        }
++    }*/
+ }
+diff --git a/telephony/java/com/android/internal/telephony/ITelephony.aidl b/telephony/java/com/android/internal/telephony/ITelephony.aidl
+index 5e525fc..fe9aa05 100755
+--- a/telephony/java/com/android/internal/telephony/ITelephony.aidl
++++ b/telephony/java/com/android/internal/telephony/ITelephony.aidl
+@@ -42,6 +42,7 @@ import com.android.ims.internal.IImsServiceController;
+ import com.android.ims.internal.IImsServiceFeatureListener;
+ import com.android.internal.telephony.CellNetworkScanResult;
+ import com.android.internal.telephony.OperatorInfo;
++import android.telephony.PersonalizationStatus;
+ 
+ import java.util.List;
+ 
+@@ -1387,4 +1388,6 @@ interface ITelephony {
+      * @hide
+      */
+     SignalStrength getSignalStrength(int subId);
++
++    PersonalizationStatus getPersonalizationStatus(String callingPkg);
+ }
+diff --git a/telephony/java/com/android/internal/telephony/RILConstants.java b/telephony/java/com/android/internal/telephony/RILConstants.java
+old mode 100755
+new mode 100644
+index 7e9cc4d..59f100d
+--- a/telephony/java/com/android/internal/telephony/RILConstants.java
++++ b/telephony/java/com/android/internal/telephony/RILConstants.java
+@@ -421,6 +421,7 @@ cat include/telephony/ril.h | \
+     int RIL_REQUEST_SET_CARRIER_INFO_IMSI_ENCRYPTION = 141;
+     int RIL_REQUEST_START_NETWORK_SCAN = 142;
+     int RIL_REQUEST_STOP_NETWORK_SCAN = 143;
++    int RIL_REQUEST_GET_PERSONALIZATION_STATUS_REQ = 144;
+ 
+     int RIL_RESPONSE_ACKNOWLEDGEMENT = 800;
+ 
+-- 
+2.7.4
+
